@@ -6,3 +6,9 @@ node_modules/
 artifacts/
 cache/
 typechain-types/
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+!.env.example
