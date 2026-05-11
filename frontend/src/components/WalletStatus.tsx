@@ -1,20 +1,20 @@
-import { ConnectButton } from "thirdweb/react";
-import { client } from "../config/web3";
-import { polygonAmoy } from "thirdweb/chains";
-import { inAppWallet } from "thirdweb/wallets";
+import { useAccount, useDisconnect } from "wagmi";
 
 export default function WalletStatus() {
+  const { isConnected } = useAccount();
+  const { disconnect } = useDisconnect();
+
   return (
-    <ConnectButton
-      client={client}
-      chain={polygonAmoy}
-      wallets={[
-        inAppWallet({
-          auth: { options: ["email", "google", "telegram", "twitter", "wallet"] },
-        }),
-      ]}
-      theme="light"
-      connectButton={{ className: "!text-xs !py-1 !px-3 !h-auto !min-h-0 !rounded-lg" }}
-    />
+    <div className="flex items-center gap-2">
+      <w3m-button />
+      {isConnected && (
+        <button
+          onClick={() => disconnect()}
+          className="px-2 py-1 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+        >
+          Disconnect
+        </button>
+      )}
+    </div>
   );
 }

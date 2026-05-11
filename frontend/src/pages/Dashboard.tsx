@@ -6,62 +6,102 @@ export default function Dashboard() {
   const { address, balance } = useContracts();
 
   return (
-    <div className="space-y-6">
-      <div className="bg-emerald-500 rounded-xl p-6 text-white">
-        <p className="text-sm opacity-80">Your Balance</p>
-        <p className="text-3xl font-bold">{parseFloat(balance).toFixed(4)} MATIC</p>
-        {address && (
-          <p className="text-xs opacity-60 mt-1">
-            {address.slice(0, 6)}...{address.slice(-4)}
+    <div className="space-y-12">
+      {/* Hero Section */}
+      <section className="relative pt-16 pb-12 md:pt-20 md:pb-16 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-emerald-50 via-white to-emerald-100" />
+        <div className="absolute top-16 right-0 w-60 h-60 bg-emerald-300/20 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-emerald-200/30 rounded-full blur-3xl" />
+
+        <div className="relative max-w-4xl mx-auto px-6 text-center">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-emerald-100 text-emerald-700 text-sm rounded-full mb-6">
+            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+            Live on Polygon Amoy Testnet
+          </div>
+
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-gray-900 max-w-3xl mx-auto leading-tight">
+            Your Trestle Dashboard
+          </h1>
+
+          <p className="mt-4 text-sm sm:text-base md:text-lg text-gray-500 max-w-2xl mx-auto">
+            Manage your staking, explore the marketplace, and interact with real-world assets.
           </p>
-        )}
+
+          {address && (
+            <div className="mt-8 flex items-center justify-center gap-2">
+              <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+              <p className="text-sm text-gray-500">
+                Connected: <span className="font-mono">{address.slice(0, 6)}...{address.slice(-4)}</span>
+              </p>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Balance Section */}
+      <div className="bg-white rounded-2xl border border-gray-100 hover:shadow-lg hover:border-emerald-100 transition-all p-8">
+        <div className="space-y-4 text-center">
+          <p className="text-sm font-medium text-gray-500">Your Balance</p>
+          <p className="text-3xl font-bold text-gray-900">{parseFloat(balance).toFixed(4)} MATIC</p>
+          {address && (
+            <p className="text-xs text-gray-400 mt-1">
+              {address.slice(0, 6)}...{address.slice(-4)}
+            </p>
+          )}
+        </div>
       </div>
 
-      <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4">
-        <h3 className="font-semibold text-sm text-amber-800">BroilerPlus (BRT)</h3>
-        <div className="mt-1 text-xs text-amber-700 space-y-0.5">
+      {/* BroilerPlus Info */}
+      <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-6">
+        <h3 className="font-semibold text-sm text-amber-800 mb-2">BroilerPlus (BRT)</h3>
+        <div className="text-xs text-amber-700 space-y-1">
           <p>Supply: {BROILER_INFO.supplyDisplay}</p>
-          <p>{BROILER_INFO.taxPercent}% tax per transfer — use {BROILER_INFO.recommendedSlippage} slippage</p>
+          <p>
+            {BROILER_INFO.taxPercent}% tax per transfer — use{" "}
+            <span className="font-medium">{BROILER_INFO.recommendedSlippage}</span> slippage
+          </p>
         </div>
-        <div className="mt-2 flex gap-2 text-xs">
+        <div className="mt-3 flex flex-wrap gap-2 text-xs">
           {Object.values(BROILER_INFO.miningAllocation).map((item) => (
-            <span key={item.label} className="bg-white/60 px-2 py-0.5 rounded">{item.label}: {item.pct}%</span>
+            <span
+              key={item.label}
+              className="bg-white/60 px-2.5 py-0.5 rounded text-xs font-medium"
+            >
+              {item.label}: {item.pct}%
+            </span>
           ))}
         </div>
       </div>
 
+      {/* Marketplace Section */}
       <div>
-        <h2 className="text-lg font-semibold mb-3">Earn & Stake</h2>
-        <div className="grid gap-3">
+        <h2 className="text-2xl font-semibold text-gray-900 mb-6">Explore</h2>
+        <div className="grid gap-6 sm:grid-cols-2">
           <StakeCard
-            title="Tier 1: Stake hNOBT"
-            description="Lock hNOBT for 3/6/12 months to mine BroilerPlus. Longer lock = higher rewards."
-            to="/stake/tier1"
+            title="Marketplace"
+            description="Browse and buy from the general marketplace."
+            to="/marketplace"
+            color="amber"
+          />
+          <StakeCard
+            title="Digital Goods"
+            description="Browse listings and buy digital assets with secure escrow."
+            to="/digital-goods"
             color="emerald"
           />
           <StakeCard
-            title="Tier 2: Stake LP"
-            description="Stake BRT/WMATIC LP tokens and earn mining rewards."
-            to="/stake/tier2"
+            title="Freelancer Escrow"
+            description="Hire freelancers with milestone-based escrow payments."
+            to="/freelancers"
             color="blue"
           />
           <StakeCard
-            title="Tier 3: Governor Vault"
-            description="Stake LP to earn Governance tokens + real yield. Loyalty multipliers up to 2x."
-            to="/stake/tier3"
-            color="purple"
+            title="Real World Assets (RWA)"
+            description="Tokenized real-world assets. Complete KYC to invest."
+            to="/rwa"
+            color="indigo"
           />
         </div>
-      </div>
-
-      <div>
-        <h2 className="text-lg font-semibold mb-3">Marketplace</h2>
-        <StakeCard
-          title="Digital Goods & Freelancers"
-          description="Browse listings, buy digital assets, and hire freelancers with secure escrow."
-          to="/marketplace"
-          color="amber"
-        />
       </div>
     </div>
   );
