@@ -1,35 +1,31 @@
-import { useCallback } from "react";
-import { useReadContract } from "wagmi";
+import { useCallback, useState } from "react";
+import { useReadContract, useWriteContract } from "wagmi";
 import { useContracts } from "../hooks/useContracts";
 
-const kycKey = (addr: string) => `trestle_kyc_${addr.toLowerCase()}`;
-
 export default function RWA() {
-  const { address, isConnected, rwaReady, rwaAddr, rwaABI } = useContracts();
+  const { 
+    address, 
+    isConnected, 
+    rwaReady, 
+    rwaAddr, 
+    rwaABI,
+    whitelistUser
+  } = useContracts();
 
+  const kycKey = (addr: string) => `trestle_kyc_${addr.toLowerCase()}`;
   const kycApproved = address ? localStorage.getItem(kycKey(address)) === "true" : false;
 
   const { data: whitelisted } = useReadContract({
-    abi: rwaABI,
-    address: rwaAddr,
-    functionName: "whitelisted",
-    args: address ? [address] : undefined,
-    query: { enabled: rwaReady && !!address },
+    abi: rwaABI, address: rwaAddr, functionName: "whitelisted",
+    args: address ? [address] : undefined, query: { enabled: rwaReady && !!address },
   });
-
   const { data: totalSupply } = useReadContract({
-    abi: rwaABI,
-    address: rwaAddr,
-    functionName: "totalSupply",
+    abi: rwaABI, address: rwaAddr, functionName: "totalSupply",
     query: { enabled: rwaReady },
   });
-
   const { data: userBalance } = useReadContract({
-    abi: rwaABI,
-    address: rwaAddr,
-    functionName: "balanceOf",
-    args: address ? [address] : undefined,
-    query: { enabled: rwaReady && !!address },
+    abi: rwaABI, address: rwaAddr, functionName: "balanceOf",
+    args: address ? [address] : undefined, query: { enabled: rwaReady && !!address },
   });
 
   const handleKyc = useCallback(() => {
@@ -38,95 +34,119 @@ export default function RWA() {
     window.location.reload();
   }, [address]);
 
+  // State for investment form
+  const [investAmount, setInvestAmount] = useState("");
+  const [isInvesting, setIsInvesting] = useState(false);
+
+  const handleInvest = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!investAmount || !address) return;
+    
+    setIsInvesting(true);
+    try {
+      await whitelistUser(address, investAmount);
+      alert("Successfully invested in RWA!");
+      // Reset form
+      setInvestAmount("");
+    } catch (error: any) {
+      console.error("Error investing in RWA:", error);
+      alert(`Failed to invest: ${error.message || "Unknown error"}`);
+    } finally {
+      setIsInvesting(false);
+    }
+  }, [address, whitelistUser, investAmount]);
+
   if (!isConnected) {
     return (
-      <section className="min-h-[calc(100vh-160px)] flex flex-col items-center justify-center px-6">
-        <div className="text-center">
-          <p className="text-lg text-gray-500">Connect wallet to access RWA</p>
+      <div className="text-center py-12">
+        <div className="text-4xl mb-2">🔐</div>
+        <p className="text-gray-500">Connect wallet to access RWA</p>
+        <div className="bg-gray-50 rounded-xl p-4 max-w-sm mx-auto mt-4">
+          <img
+            src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent("https://testnet.trestle.website/rwa")}&color=059669&bgcolor=ffffff&ecc=M`}
+            alt="QR"
+            className="rounded-lg mx-auto mb-2"
+          />
+          <p className="text-[10px] text-gray-400 font-medium">Scan with wallet to connect</p>
         </div>
-      </section>
+      </div>
     );
   }
 
   const isApproved = kycApproved || whitelisted === true;
 
   return (
-    <div className="space-y-12">
-      <section className="pt-16 pb-12">
-        <div className="max-w-4xl mx-auto px-4">
-          <h2 className="text-2xl font-semibold text-gray-900 text-center mb-6">
-            Real World Assets (RWA)
-          </h2>
-          <p className="text-center text-lg text-gray-500 max-w-2xl mx-auto">
-            Tokenized real-world assets require KYC verification.
-          </p>
-        </div>
-      </section>
+    <div className="space-y-6">
+      <h2 className="text-xl font-semibold">Real World Assets (RWA)</h2>
+      <p className="text-sm text-gray-500">Tokenized real-world assets require KYC verification.</p>
 
       {!rwaReady && (
-        <section className="pt-16 pb-12">
-          <div className="max-w-2xl mx-auto px-4">
-            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-8 text-center">
-              <p className="text-sm text-yellow-700">
-                RWA contract not deployed on this network yet.
-              </p>
-            </div>
-          </div>
-        </section>
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-center">
+          <p className="text-sm text-yellow-700">RWA contract not deployed on this network yet.</p>
+        </div>
       )}
 
       {rwaReady && (
         <>
-          <section className="pt-16 pb-12">
-            <div className="max-w-4xl mx-auto px-4">
-              <div className="bg-white rounded-2xl border border-gray-100 hover:shadow-lg hover:border-emerald-100 transition-all p-8">
-                <h3 className="font-semibold text-gray-900 mb-4">KYC Verification</h3>
-
-                {isApproved ? (
-                  <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-6 text-center">
-                    <p className="text-emerald-700 font-semibold">KYC Approved ✓</p>
-                    {whitelisted === true && (
-                      <p className="text-xs text-emerald-600 mt-2">Whitelisted on-chain</p>
-                    )}
-                    {address && (
-                      <p className="text-xs text-emerald-500 mt-4 font-mono">
-                        {address.slice(0, 6)}...{address.slice(-4)}
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <p className="text-sm text-gray-500">
-                      Verify your identity to access RWA investments.
-                    </p>
-                    <button onClick={handleKyc}
-                      className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-medium py-3 px-6 rounded-lg 
-                                 transition-colors shadow-lg shadow-emerald-200 hover:shadow-emerald-300">
-                      Complete KYC
-                    </button>
-                  </div>
-                )}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <h3 className="font-semibold text-gray-900 mb-4">KYC Verification</h3>
+            {isApproved ? (
+              <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 text-center">
+                <p className="text-emerald-700 font-semibold text-lg">✓ KYC Approved</p>
+                {whitelisted === true && <p className="text-xs text-emerald-600 mt-1">Whitelisted on-chain</p>}
+                {address && <p className="text-xs text-emerald-500 mt-2 font-mono">{address.slice(0, 6)}...{address.slice(-4)}</p>}
               </div>
-            </div>
-          </section>
-          
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-gray-500">Verify your identity to access RWA investments.</p>
+                <button onClick={handleKyc}
+                  className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-medium py-3 px-6 rounded-lg transition shadow-lg shadow-emerald-200">
+                  Complete KYC
+                </button>
+              </div>
+            )}
+          </div>
+
           {isApproved && (
-            <section className="pt-16 pb-12">
-              <div className="max-w-4xl mx-auto px-4">
-                <div className="bg-white rounded-2xl border border-gray-100 hover:shadow-lg hover:border-emerald-100 transition-all p-8">
-                  <h3 className="font-semibold text-gray-900 mb-4">Available Assets</h3>
-                  <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
-                    <p className="font-medium text-sm text-gray-700">Digital Asset 1 (DA1)</p>
-                    <p className="text-xs text-gray-500 mt-2">
-                      Total Supply: {totalSupply ? (Number(totalSupply) / 1e18).toLocaleString() : "..."} tokens
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      Your Balance: {userBalance ? (Number(userBalance) / 1e18).toLocaleString() : "0"} DA1
-                    </p>
-                  </div>
+            <>
+              <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <h3 className="font-semibold text-gray-900 mb-4">Available Assets</h3>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <p className="font-medium text-sm text-gray-700">Digital Asset 1 (DA1)</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Total Supply: {totalSupply ? (Number(totalSupply) / 1e18).toLocaleString() : "..."} tokens
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Your Balance: {userBalance ? (Number(userBalance) / 1e18).toLocaleString() : "0"} DA1
+                  </p>
                 </div>
               </div>
-            </section>
+
+              <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <h3 className="font-semibold text-gray-900 mb-4">Invest in RWA</h3>
+                <form onSubmit={handleInvest} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Investment Amount (MATIC)</label>
+                    <input
+                      type="number"
+                      step="0.0001"
+                      min="0.0001"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      value={investAmount}
+                      onChange={(e) => setInvestAmount(e.target.value)}
+                      placeholder="Enter amount to invest in MATIC"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={isInvesting}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-3 px-6 rounded-lg transition shadow-lg shadow-emerald-200"
+                  >
+                    {isInvesting ? "Processing..." : "Invest Now"}
+                  </button>
+                </form>
+              </div>
+            </>
           )}
         </>
       )}

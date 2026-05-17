@@ -1,14 +1,11 @@
 import { useAccount, useChainId, useBalance } from "wagmi";
 import { useReadContract, useWriteContract } from "wagmi";
 import { formatUnits, type Address, parseUnits } from "viem";
-import { CHAIN_CONFIG } from "../config/contracts";
+import { polygonAmoy } from "wagmi/chains";
+import { CONTRACT_ADDRESSES } from "../config/contracts";
+import { DIGITAL_GOODS_ABI, FREELANCER_ESCROW_ABI } from "../utils/abis";
 
-const SUPPORTED = [CHAIN_CONFIG.amoy.id, CHAIN_CONFIG.polygon.id] as const;
-
-const ERC20_ABI = [
-  { inputs: [{ name: "account", type: "address" }], name: "balanceOf", outputs: [{ name: "", type: "uint256" }], stateMutability: "view", type: "function" },
-  { inputs: [{ name: "spender", type: "address" }, { name: "amount", type: "uint256" }], name: "approve", outputs: [{ name: "", type: "bool" }], stateMutability: "nonpayable", type: "function" },
-] as const;
+const SUPPORTED: number[] = [80002]; // Polygon Amoy chain ID
 
 const MARKETPLACE_ABI = [
   { inputs: [{ name: "listingId", type: "uint256" }], name: "buy", outputs: [], stateMutability: "payable", type: "function" },
@@ -23,49 +20,24 @@ const RWA_ABI = [
   { inputs: [{ name: "to", type: "address" }, { name: "amount", type: "uint256" }], name: "whitelistUser", outputs: [], stateMutability: "nonpayable", type: "function" },
 ] as const;
 
-const DIGITAL_GOODS_ABI = [
-  { inputs: [], name: "listingCounter", outputs: [{ name: "", type: "uint96" }], stateMutability: "view", type: "function" },
-  { inputs: [{ name: "", type: "uint256" }], name: "listings", outputs: [{ name: "id", type: "uint96" }, { name: "seller", type: "address" }, { name: "price", type: "uint128" }, { name: "token", type: "address" }, { name: "active", type: "bool" }], stateMutability: "view", type: "function" },
-  { inputs: [{ name: "listingId", type: "uint256" }], name: "buyItem", outputs: [{ name: "", type: "uint256" }], stateMutability: "payable", type: "function" },
-  { inputs: [{ name: "orderId", type: "uint256" }], name: "confirmDelivery", outputs: [], stateMutability: "nonpayable", type: "function" },
-] as const;
-
-const FREELANCER_ABI = [
-  { inputs: [], name: "serviceCounter", outputs: [{ name: "", type: "uint96" }], stateMutability: "view", type: "function" },
-  { inputs: [{ name: "", type: "uint256" }], name: "services", outputs: [{ name: "id", type: "uint96" }, { name: "freelancer", type: "address" }, { name: "totalPrice", type: "uint128" }, { name: "token", type: "address" }, { name: "metaURI", type: "bytes32" }, { name: "milestoneCount", type: "uint8" }, { name: "active", type: "bool" }, { name: "createdAt", type: "uint40" }], stateMutability: "view", type: "function" },
-  { inputs: [{ name: "sid", type: "uint256" }, { name: "mid", type: "uint256" }], name: "fundMilestone", outputs: [], stateMutability: "payable", type: "function" },
-] as const;
-
 const PLACEHOLDER = "0x...";
 const isReal = (a: string) => a !== PLACEHOLDER && !a.startsWith("0x0000");
-
-// these will be filled after deploy — pulled from env so no hardcoding needed between deploys
-const A = (key: string): Address =>
-  (import.meta.env[`VITE_${key}`] as Address) ?? PLACEHOLDER as Address;
 
 export function useContracts() {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
-  const { data: native } = useBalance({ address });
+  const { data: native } = useBalance({ address, chainId: polygonAmoy.id });
 
-  const isCorrectChain = (SUPPORTED as readonly number[]).includes(chainId);
-  const chainName = chainId === CHAIN_CONFIG.polygon.id ? CHAIN_CONFIG.polygon.name : chainId === CHAIN_CONFIG.amoy.id ? CHAIN_CONFIG.amoy.name : "Unsupported";
-
-  // tokens — same address on both networks
-  const hNOBT = "0xcF51ab7398315DbA6588Aa7fb3Df7c99D3D1F4dD" as Address;
-  const brt = "0xeCb4cAc0C9e5cBd42a9Ed36467ce8f96072AD58b" as Address;
-  const brtLp = "0xc445b18b3ff85e0691fe416ad91e456f8697b166" as Address;
+  const isCorrectChain = SUPPORTED.includes(chainId);
+  const chainName = "Polygon Amoy";
 
   // testnet contract addresses (from env)
-  const marketplace = A("MARKETPLACE_CORE");
-  const digitalRWA = A("DIGITAL_RWA");
-  const digitalGoods = A("DIGITAL_GOODS");
-  const freelancer = A("FREELANCER_ESCROW");
-  const aiDispute = A("AI_DISPUTE");
-
-  const { data: hNOBTBal } = useReadContract({ abi: ERC20_ABI, address: hNOBT, functionName: "balanceOf", args: address ? [address] : undefined, query: { enabled: !!address } });
-  const { data: brtBal } = useReadContract({ abi: ERC20_ABI, address: brt, functionName: "balanceOf", args: address ? [address] : undefined, query: { enabled: !!address } });
-  const { data: lpBal } = useReadContract({ abi: ERC20_ABI, address: brtLp, functionName: "balanceOf", args: address ? [address] : undefined, query: { enabled: !!address } });
+  const marketplace = CONTRACT_ADDRESSES.amoy.marketplaceCore as Address;
+  const digitalRWA = CONTRACT_ADDRESSES.amoy.digitalRWA as Address;
+  const digitalGoods = CONTRACT_ADDRESSES.amoy.digitalGoods as Address;
+  const freelancerEscrow = CONTRACT_ADDRESSES.amoy.freelancerEscrow as Address;
+  const aiDispute = CONTRACT_ADDRESSES.amoy.aiDisputeResolver as Address;
+  const govToken = CONTRACT_ADDRESSES.amoy.governanceToken as Address;
 
   const { writeContractAsync } = useWriteContract();
   const write = (payload: Parameters<typeof writeContractAsync>[0]) =>
@@ -77,9 +49,6 @@ export function useContracts() {
     isCorrectChain,
     chainName,
     balance: native ? formatUnits(native.value, native.decimals) : "0",
-    hNOBTBalance: hNOBTBal?.toString() ?? "0",
-    brtBalance: brtBal?.toString() ?? "0",
-    lpBalance: lpBal?.toString() ?? "0",
 
     // marketplace
     marketplaceReady: isReal(marketplace) && isCorrectChain,
@@ -92,17 +61,29 @@ export function useContracts() {
     rwaReady: isReal(digitalRWA) && isCorrectChain,
     rwaAddr: digitalRWA,
     rwaABI: RWA_ABI,
+    whitelistUser: (to: Address, amount: string) =>
+      write({ abi: RWA_ABI, address: digitalRWA, functionName: "whitelistUser", args: [to, parseUnits(amount, 18)] } as any),
 
     // Digital Goods
-    dgReady: isReal(digitalGoods) && isCorrectChain,
-    dgAddr: digitalGoods,
-    dgABI: DIGITAL_GOODS_ABI,
-    buyDigitalGood: (listingId: number, price: string) =>
-      write({ abi: DIGITAL_GOODS_ABI, address: digitalGoods, functionName: "buyItem", args: [BigInt(listingId)], value: parseUnits(price, 18) } as any),
+    digitalGoodsReady: isReal(digitalGoods) && isCorrectChain,
+    digitalGoodsAddr: digitalGoods,
+    digitalGoodsABI: DIGITAL_GOODS_ABI,
+    listItem: (price: string, tokenURI: string) =>
+      write({ abi: DIGITAL_GOODS_ABI, address: digitalGoods, functionName: "listItem", args: [parseUnits(price, 18), tokenURI] } as any),
+    buyItem: (id: number, value: string) =>
+      write({ abi: DIGITAL_GOODS_ABI, address: digitalGoods, functionName: "buyItem", args: [BigInt(id)], value: parseUnits(value, 18) } as any),
 
     // Freelancer Escrow
-    feReady: isReal(freelancer) && isCorrectChain,
-    feAddr: freelancer,
-    feABI: FREELANCER_ABI,
+    freelancerEscrowReady: isReal(freelancerEscrow) && isCorrectChain,
+    freelancerEscrowAddr: freelancerEscrow,
+    freelancerEscrowABI: FREELANCER_ESCROW_ABI,
+    createJob: (freelancer: Address, amount: string) =>
+      write({ abi: FREELANCER_ESCROW_ABI, address: freelancerEscrow, functionName: "createJob", args: [freelancer, parseUnits(amount, 18)] } as any),
+    deliverJob: (id: number) =>
+      write({ abi: FREELANCER_ESCROW_ABI, address: freelancerEscrow, functionName: "deliver", args: [BigInt(id)] } as any),
+    releaseJob: (id: number) =>
+      write({ abi: FREELANCER_ESCROW_ABI, address: freelancerEscrow, functionName: "release", args: [BigInt(id)] } as any),
+    refundJob: (id: number) =>
+      write({ abi: FREELANCER_ESCROW_ABI, address: freelancerEscrow, functionName: "refund", args: [BigInt(id)] } as any),
   };
 }

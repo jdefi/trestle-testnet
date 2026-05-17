@@ -1,9 +1,13 @@
 import { useContracts } from "../hooks/useContracts";
-import StakeCard from "../components/StakeCard";
-import { BROILER_INFO } from "../config/contracts";
+import LoadingSpinner from "../components/LoadingSpinner";
+import { useTransactions } from "../hooks/useTransactions";
 
 export default function Dashboard() {
   const { address, balance } = useContracts();
+  const { transactions, loading, error } = useTransactions();
+
+  // Debug: log the values to see what we're getting
+  console.log("Dashboard received:", { address, balance });
 
   return (
     <div className="space-y-12">
@@ -19,30 +23,50 @@ export default function Dashboard() {
             Live on Polygon Amoy Testnet
           </div>
 
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-gray-900 max-w-3xl mx-auto leading-tight">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-gray-900 max-w-3xl mx-auto leading-tight">
             Your Trestle Dashboard
           </h1>
 
-          <p className="mt-4 text-sm sm:text-base md:text-lg text-gray-500 max-w-2xl mx-auto">
-            Manage your staking, explore the marketplace, and interact with real-world assets.
-          </p>
-
-          {address && (
-            <div className="mt-8 flex items-center justify-center gap-2">
-              <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-              <p className="text-sm text-gray-500">
-                Connected: <span className="font-mono">{address.slice(0, 6)}...{address.slice(-4)}</span>
-              </p>
-            </div>
+          {!address && (
+            <p className="mt-4 text-lg text-gray-500 max-w-2xl mx-auto">
+              Connect wallet to explore the full marketplace and interact with all testnet features.
+            </p>
           )}
+
+          <div className="mt-8 flex flex-col sm:flex-row sm:items-center sm:justify-center gap-4">
+            {address ? (
+              <>
+                <p className="text-sm text-gray-500">
+                  Connected: <span className="font-mono">{address.slice(0, 6)}...</span>{address.slice(-4)}
+                </p>
+                <button
+                  onClick={() => alert("Disconnect functionality would go here")}
+                  className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-sm font-medium rounded-lg transition-colors"
+                >
+                  Disconnect
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => alert("Connect wallet functionality would go here")}
+                className="px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-lg shadow-emerald-200 transition-all flex items-center gap-2"
+              >
+                Connect Wallet
+              </button>
+            )}
+          </div>
         </div>
       </section>
 
       {/* Balance Section */}
       <div className="bg-white rounded-2xl border border-gray-100 hover:shadow-lg hover:border-emerald-100 transition-all p-8">
         <div className="space-y-4 text-center">
-          <p className="text-sm font-medium text-gray-500">Your Balance</p>
-          <p className="text-3xl font-bold text-gray-900">{parseFloat(balance).toFixed(4)} MATIC</p>
+          <p className="text-sm font-medium text-gray-500">Your Amoy Balance</p>
+          {balance ? (
+            <p className="text-3xl font-bold text-gray-900">{parseFloat(balance).toFixed(4)} MATIC</p>
+          ) : (
+            <LoadingSpinner label="Fetching balance..." />
+          )}
           {address && (
             <p className="text-xs text-gray-400 mt-1">
               {address.slice(0, 6)}...{address.slice(-4)}
@@ -51,57 +75,63 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* BroilerPlus Info */}
-      <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-6">
-        <h3 className="font-semibold text-sm text-amber-800 mb-2">BroilerPlus (BRT)</h3>
-        <div className="text-xs text-amber-700 space-y-1">
-          <p>Supply: {BROILER_INFO.supplyDisplay}</p>
-          <p>
-            {BROILER_INFO.taxPercent}% tax per transfer — use{" "}
-            <span className="font-medium">{BROILER_INFO.recommendedSlippage}</span> slippage
-          </p>
-        </div>
-        <div className="mt-3 flex flex-wrap gap-2 text-xs">
-          {Object.values(BROILER_INFO.miningAllocation).map((item) => (
-            <span
-              key={item.label}
-              className="bg-white/60 px-2.5 py-0.5 rounded text-xs font-medium"
-            >
-              {item.label}: {item.pct}%
-            </span>
-          ))}
+      {/* QR for mobile access */}
+      <div className="text-center">
+        <div className="bg-white rounded-xl shadow border border-gray-100 p-4 inline-block">
+          <img
+            src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent("https://testnet.trestle.website")}&color=059669&bgcolor=ffffff&ecc=M`}
+            alt="QR Code"
+            className="rounded mx-auto"
+          />
+          <p className="text-[10px] text-gray-400 mt-1">Scan to open on mobile</p>
         </div>
       </div>
 
-      {/* Marketplace Section */}
-      <div>
-        <h2 className="text-2xl font-semibold text-gray-900 mb-6">Explore</h2>
-        <div className="grid gap-6 sm:grid-cols-2">
-          <StakeCard
-            title="Marketplace"
-            description="Browse and buy from the general marketplace."
-            to="/marketplace"
-            color="amber"
-          />
-          <StakeCard
-            title="Digital Goods"
-            description="Browse listings and buy digital assets with secure escrow."
-            to="/digital-goods"
-            color="emerald"
-          />
-          <StakeCard
-            title="Freelancer Escrow"
-            description="Hire freelancers with milestone-based escrow payments."
-            to="/freelancers"
-            color="blue"
-          />
-          <StakeCard
-            title="Real World Assets (RWA)"
-            description="Tokenized real-world assets. Complete KYC to invest."
-            to="/rwa"
-            color="indigo"
-          />
-        </div>
+      {/* Transaction History Section */}
+      <div className="mt-8">
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">Recent Transactions</h2>
+        {loading ? (
+          <div className="text-center py-6">
+            <LoadingSpinner label="Loading transactions..." />
+          </div>
+        ) : error ? (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
+            <p className="text-sm text-red-700">Error loading transactions: {error}</p>
+          </div>
+        ) : address && transactions.length === 0 ? (
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-center">
+            <p className="text-sm text-gray-500">No transactions found for this address</p>
+          </div>
+        ) : address && (
+          <div className="space-y-4">
+            {transactions.map((tx: any, index: number) => (
+              <div key={index} className="bg-white rounded-xl border border-gray-200 p-4">
+                <div className="flex justify-between items-start mb-2">
+                  <span className="font-medium text-gray-900">Tx #{index + 1}</span>
+                  <span className="text-xs text-gray-500">{new Date(tx.timeStamp * 1000).toLocaleString()}</span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0">
+                    <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-xs font-medium text-emerald-800">
+                      {tx.from.substring(0, 2).toUpperCase()}
+                    </div>
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <p className="text-sm font-medium text-gray-700">
+                      {tx.from} → {tx.to}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Value: {parseFloat(tx.value) / 1e18} MATIC • Gas: {tx.gasUsed}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      TxHash: {tx.hash.substring(0, 10)}...{tx.hash.substring(tx.hash.length - 6)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
